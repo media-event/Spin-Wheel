@@ -194,6 +194,7 @@
       text-transform: uppercase;
     }
 
+    /* Modal Pop-up Pemenang */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 100; }
     .modal-content { 
       background: linear-gradient(135deg, #1e1b4b, #312e81);
@@ -236,7 +237,6 @@
   <h1>Undian Roulette 🎯</h1>
 
   <div class="dashboard-container">
-    
     <div class="panel input-panel">
       <h3>Daftar Peserta Spin</h3>
       <textarea id="namesInput" oninput="updateCandidatesFromInput()" placeholder="Masukkan 1 nama per baris..."></textarea>
@@ -255,7 +255,6 @@
       <h3>Daftar Pemenang</h3>
       <ul id="winnerList" class="winner-list"></ul>
     </div>
-
   </div>
 
   <div id="winnerModal" class="modal">
@@ -269,12 +268,12 @@
   <script>
     let candidates = [];
     
-    // Target 4 pemenang rahasia
+    // TARGET 4 PEMENANG TERKUNCI SESUAI URUTAN
     const targetKeywords = [
-      ["sandy", "sandi"],
-      ["heru"],
-      ["elias", "eliaz"],
-      ["faris", "fariz"]
+      ["elias", "eliaz"],  // Spin 1
+      ["sandy", "sandi"],  // Spin 2
+      ["heru"],            // Spin 3
+      ["faris", "fariz"]   // Spin 4
     ];
 
     let currentSpinStep = 0;
@@ -399,9 +398,10 @@
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 10;
 
+      // Suara klak tick saat melewati pembatas
       const pointerAngle = (3 * Math.PI) / 2;
-      const normalizedRotation = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-      const currentSliceIndex = Math.floor(normalizedRotation / sliceAngle);
+      let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      const currentSliceIndex = Math.floor(angleUnderPointer / sliceAngle);
 
       if (currentSliceIndex !== lastSliceIndex && isSpinning) {
         playTickSound();
@@ -411,7 +411,6 @@
 
     drawWheel();
 
-    // Fungsi Mencari Indeks Target Terkunci secara Presisi
     function getWinningTargetIndex() {
       if (currentSpinStep < targetKeywords.length) {
         const keywords = targetKeywords[currentSpinStep];
@@ -422,7 +421,7 @@
           }
         }
       }
-      return 0; // Mengambil indeks 0 dari nama yang ada di roda jika tidak ketemu
+      return 0;
     }
 
     function spinWheel() {
@@ -437,28 +436,22 @@
       document.getElementById("spinBtn").disabled = true;
 
       const targetIndex = getWinningTargetIndex();
-      // AMBIL NAMA ASLI SESUAI SEKTOR RODA HASIL PERHITUNGAN INDEKS
-      const winnerName = candidates[targetIndex];
-
       const numSlices = candidates.length;
       const sliceAngle = (2 * Math.PI) / numSlices;
-      const pointerAngle = (3 * Math.PI) / 2;
+      const pointerAngle = (3 * Math.PI) / 2; // Jarum Atas (270 derajat)
       
-      // Hitung rotasi persis agar jarum (270 deg) menunjuk tepat ke sektor targetIndex
-      const targetSectorMiddle = targetIndex * sliceAngle + sliceAngle / 2;
-      let desiredAngle = pointerAngle - targetSectorMiddle;
+      // Hitung sudut persis agar tengah juring targetIndex berhenti tepat di bawah jarum
+      const targetCenterAngle = targetIndex * sliceAngle + sliceAngle / 2;
+      let targetRotationBase = pointerAngle - targetCenterAngle;
       
-      // Selalu berputar searah jarum jam dengan rotasi penuh 6-8 kali
-      const fullRotations = (6 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
+      // Putaran penuh ekstra 6-8 kali
+      const extraRotations = (6 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
       
-      const currentMod = currentRotation % (2 * Math.PI);
-      let targetMod = desiredAngle % (2 * Math.PI);
-      if (targetMod < 0) targetMod += 2 * Math.PI;
-      
-      let deltaAngle = targetMod - currentMod;
-      if (deltaAngle <= 0) deltaAngle += 2 * Math.PI;
+      // Hitung rotasi akhir presisi
+      let delta = (targetRotationBase - currentRotation) % (2 * Math.PI);
+      if (delta < 0) delta += 2 * Math.PI;
 
-      const finalRotation = currentRotation + fullRotations + deltaAngle;
+      const finalRotation = currentRotation + delta + extraRotations;
 
       const startTime = performance.now();
       const spinDuration = 7000;
@@ -477,7 +470,13 @@
         } else {
           currentRotation = finalRotation;
           drawWheel();
-          showWinner(winnerName, targetIndex);
+          
+          // DETEKSI AKURAT SISI JARUM: Dapatkan nama yang benar-benar ditunjuk oleh jarum
+          let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          let actualWinnerIndex = Math.floor(angleUnderPointer / sliceAngle) % numSlices;
+          let actualWinnerName = candidates[actualWinnerIndex];
+
+          showWinner(actualWinnerName, actualWinnerIndex);
           isSpinning = false;
         }
       }
@@ -486,6 +485,7 @@
     }
 
     function showWinner(name, indexToRemove) {
+      // POP-UP MUNCUL SAMA PERSIS SESUAI NAMA YANG DITUNJUK JARUM
       document.getElementById("winnerName").innerText = name;
       document.getElementById("winnerModal").style.display = "flex";
       playVictorySound();
@@ -498,7 +498,7 @@
       li.innerHTML = `<span>${currentSpinStep}. ${name}</span> <span class="winner-badge">Terpilih</span>`;
       listEl.appendChild(li);
 
-      // Hapus nama pemenang dari juring roda untuk putaran berikutnya
+      // Hapus pemenang dari array
       candidates.splice(indexToRemove, 1);
       document.getElementById("namesInput").value = candidates.join("\n");
     }
