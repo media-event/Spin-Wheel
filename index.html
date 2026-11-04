@@ -59,7 +59,6 @@
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     }
 
-    /* Panel Kiri: Input Nama Manual */
     .input-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .input-panel h3 { 
       margin-bottom: 12px; 
@@ -99,7 +98,6 @@
     }
     .btn-apply:hover { opacity: 0.9; transform: translateY(-2px); }
 
-    /* Panel Tengah: Spin Wheel */
     .wheel-panel {
       display: flex;
       flex-direction: column;
@@ -163,7 +161,6 @@
       100% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0); }
     }
 
-    /* Panel Kanan: Hasil Undian Generik */
     .result-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .result-panel h3 { 
       margin-bottom: 15px; 
@@ -197,7 +194,6 @@
       text-transform: uppercase;
     }
 
-    /* Modal Pop-up */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 100; }
     .modal-content { 
       background: linear-gradient(135deg, #1e1b4b, #312e81);
@@ -241,14 +237,12 @@
 
   <div class="dashboard-container">
     
-    <!-- Kolom 1: Input Daftar Nama Manual -->
     <div class="panel input-panel">
       <h3>Daftar Peserta Spin</h3>
       <textarea id="namesInput" oninput="updateCandidatesFromInput()" placeholder="Masukkan 1 nama per baris..."></textarea>
       <button class="btn-apply" onclick="updateCandidatesFromInput()">Update Roda</button>
     </div>
 
-    <!-- Kolom 2: Spin Wheel Dashboard -->
     <div class="wheel-panel">
       <div class="wheel-container">
         <div id="pointer" class="pointer"></div>
@@ -257,7 +251,6 @@
       <button id="spinBtn" class="btn-spin" onclick="spinWheel()">PUTAR RODA</button>
     </div>
 
-    <!-- Kolom 3: Hasil Pemenang (Judul Generik) -->
     <div class="panel result-panel">
       <h3>Daftar Pemenang</h3>
       <ul id="winnerList" class="winner-list"></ul>
@@ -265,7 +258,6 @@
 
   </div>
 
-  <!-- Modal Pop-Up Pemenang -->
   <div id="winnerModal" class="modal">
     <div class="modal-content">
       <h2>🎉 SELAMAT! 🎉</h2>
@@ -275,10 +267,9 @@
   </div>
 
   <script>
-    // Inisialisasi awal: Kosong agar diisi manual oleh pengguna
     let candidates = [];
     
-    // Kata kunci 4 nama target rahasia
+    // Target 4 pemenang rahasia
     const targetKeywords = [
       ["sandy", "sandi"],
       ["heru"],
@@ -301,7 +292,6 @@
     let isSpinning = false;
     let lastSliceIndex = -1;
 
-    // Web Audio API
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) {
@@ -364,7 +354,6 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (numSlices === 0) {
-        // Tampilan dasar saat belum ada nama yang dimasukkan
         ctx.save();
         ctx.translate(radius, radius);
         ctx.textAlign = "center";
@@ -403,7 +392,6 @@
         ctx.restore();
       }
 
-      // Pin Tengah Roda
       ctx.beginPath();
       ctx.arc(radius, radius, 25, 0, 2 * Math.PI);
       ctx.fillStyle = "#ffffff";
@@ -423,9 +411,10 @@
 
     drawWheel();
 
-    function findTargetIndex(stepIndex) {
-      if (stepIndex < targetKeywords.length) {
-        const keywords = targetKeywords[stepIndex];
+    // Fungsi Mencari Indeks Target Terkunci secara Presisi
+    function getWinningTargetIndex() {
+      if (currentSpinStep < targetKeywords.length) {
+        const keywords = targetKeywords[currentSpinStep];
         for (let i = 0; i < candidates.length; i++) {
           const nameLower = candidates[i].toLowerCase();
           if (keywords.some(kw => nameLower.includes(kw))) {
@@ -433,8 +422,7 @@
           }
         }
       }
-      // Pilihan acak jika target tidak ditemukan di daftar
-      return Math.floor(Math.random() * candidates.length);
+      return 0; // Mengambil indeks 0 dari nama yang ada di roda jika tidak ketemu
     }
 
     function spinWheel() {
@@ -448,23 +436,32 @@
       isSpinning = true;
       document.getElementById("spinBtn").disabled = true;
 
-      const targetIndex = findTargetIndex(currentSpinStep);
+      const targetIndex = getWinningTargetIndex();
+      // AMBIL NAMA ASLI SESUAI SEKTOR RODA HASIL PERHITUNGAN INDEKS
       const winnerName = candidates[targetIndex];
 
       const numSlices = candidates.length;
       const sliceAngle = (2 * Math.PI) / numSlices;
       const pointerAngle = (3 * Math.PI) / 2;
       
-      const targetSectorAngle = targetIndex * sliceAngle + sliceAngle / 2;
-      let baseTargetRotation = pointerAngle - targetSectorAngle;
+      // Hitung rotasi persis agar jarum (270 deg) menunjuk tepat ke sektor targetIndex
+      const targetSectorMiddle = targetIndex * sliceAngle + sliceAngle / 2;
+      let desiredAngle = pointerAngle - targetSectorMiddle;
       
-      const extraRotations = (7 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
+      // Selalu berputar searah jarum jam dengan rotasi penuh 6-8 kali
+      const fullRotations = (6 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
       
       const currentMod = currentRotation % (2 * Math.PI);
-      const finalRotation = currentRotation + (2 * Math.PI - currentMod) + extraRotations + (baseTargetRotation % (2 * Math.PI));
+      let targetMod = desiredAngle % (2 * Math.PI);
+      if (targetMod < 0) targetMod += 2 * Math.PI;
+      
+      let deltaAngle = targetMod - currentMod;
+      if (deltaAngle <= 0) deltaAngle += 2 * Math.PI;
+
+      const finalRotation = currentRotation + fullRotations + deltaAngle;
 
       const startTime = performance.now();
-      const spinDuration = 7500;
+      const spinDuration = 7000;
 
       function animateSpin(now) {
         const elapsed = now - startTime;
@@ -501,7 +498,7 @@
       li.innerHTML = `<span>${currentSpinStep}. ${name}</span> <span class="winner-badge">Terpilih</span>`;
       listEl.appendChild(li);
 
-      // Hapus pemenang dari daftar peserta agar roda diperbarui di putaran berikutnya
+      // Hapus nama pemenang dari juring roda untuk putaran berikutnya
       candidates.splice(indexToRemove, 1);
       document.getElementById("namesInput").value = candidates.join("\n");
     }
