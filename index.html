@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lucky Spin Wheel with Sound</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; padding: 20px; }
+    h1 { margin-bottom: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+    .wheel-container { position: relative; width: 380px; height: 380px; margin-bottom: 30px; }
+    .pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-top: 30px solid #ff4757; z-index: 10; filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.3)); transition: transform 0.05s ease; }
+    .pointer.tick { transform: translateX(-50%) rotate(-10deg); }
+    canvas { width: 100%; height: 100%; border-radius: 50%; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 8px solid #fff; }
+    .btn-spin { background: #2ed573; color: white; border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: all 0.2s ease; }
+    .btn-spin:hover { background: #26af5f; transform: scale(1.05); }
+    .btn-spin:disabled { background: #a4b0be; cursor: not-allowed; transform: scale(1); }
+    
+    /* Pop-up Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
+    .modal-content { background: white; color: #333; padding: 30px; border-radius: 15px; text-align: center; max-width: 320px; width: 90%; animation: popIn 0.3s ease; }
+    .modal-content h2 { margin-bottom: 10px; color: #2e86de; }
+    .modal-content p { font-size: 1.5rem; font-weight: bold; margin: 15px 0; color: #ee5253; }
+    .btn-close { background: #2e86de; color: white; border: none; padding: 10px 25px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    @keyframes popIn { 0% { transform: scale(0.7); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <h1>Undian Roulette 🎯</h1>
+  
+  <div class="wheel-container">
+    <div id="pointer" class="pointer"></div>
+    <canvas id="wheelCanvas" width="500" height="500"></canvas>
+  </div>
+
+  <button id="spinBtn" class="btn-spin" onclick="spinWheel()">PUTAR RODA</button>
+
+  <!-- Modal Pemenang -->
+  <div id="winnerModal" class="modal">
+    <div class="modal-content">
+      <h2>🎉 Selamat! 🎉</h2>
+      <p id="winnerName">-</p>
+      <button class="btn-close" onclick="closeModal()">Tutup</button>
+    </div>
+  </div>
+
+  <script>
+    const candidates = ["Heru", "Indra", "Fariz", "Elias", "Raihan", "Krida", "Dias", "Sandy", "Probo"];
+    const fixedWinners = ["Heru", "Fariz", "Elias", "Sandy"];
+    let currentSpinIndex = 0;
+
+    const colors = ["#ff6b6b", "#4ecdc4", "#ffe66d", "#1dd1a1", "#ff9ff3", "#fabca1", "#54a0ff", "#5f27cd", "#00d2d3"];
+    
+    const canvas = document.getElementById("wheelCanvas");
+    const ctx = canvas.getContext("2d");
+    const pointerEl = document.getElementById("pointer");
+    const numSlices = candidates.length;
+    const sliceAngle = (2 * Math.PI) / numSlices;
+
+    let currentRotation = 0;
+    let isSpinning = false;
+    let lastSliceIndex = -1;
+
+    // --- SINTESIS SUARA (Web Audio API) ---
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    // Suara Klik Jarum
+    function playTickSound() {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.04);
+      
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.04);
+      
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.04);
+
+      // Animasi sedikit sentakan pada jarum
+      pointerEl.classList.add("tick");
+      setTimeout(() => pointerEl.classList.remove("tick"), 50);
+    }
+
+    // Suara Terompet Kemenangan (Fanfare)
+    function playVictorySound() {
+      if (!audioCtx) return;
+      
+      const notes = [
+        { freq: 523.25, time: 0, duration: 0.15 },    // C5
+        { freq: 659.25, time: 0.15, duration: 0.15 }, // E5
+        { freq: 783.99, time: 0.3, duration: 0.15 },  // G5
+        { freq: 1046.50, time: 0.45, duration: 0.5 }  // C6
+      ];
+
+      notes.forEach(note => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(note.freq, audioCtx.currentTime + note.time);
+        
+        gain.gain.setValueAtTime(0.4, audioCtx.currentTime + note.time);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + note.time + note.duration);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        osc.start(audioCtx.currentTime + note.time);
+        osc.stop(audioCtx.currentTime + note.time + note.duration);
+      });
+    }
+
+    // Gambar Roda
+    function drawWheel() {
+      const radius = canvas.width / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i < numSlices; i++) {
+        const startAngle = i * sliceAngle + currentRotation;
+        const endAngle = startAngle + sliceAngle;
+
+        ctx.beginPath();
+        ctx.moveTo(radius, radius);
+        ctx.arc(radius, radius, radius, startAngle, endAngle);
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.save();
+        ctx.translate(radius, radius);
+        ctx.rotate(startAngle + sliceAngle / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 22px Arial";
+        ctx.shadowColor = "rgba(0,0,0,0.5)";
+        ctx.shadowBlur = 4;
+        ctx.fillText(candidates[i], radius - 30, 8);
+        ctx.restore();
+      }
+
+      // Deteksi jika jarum melewati pembatas sektor untuk membunyikan suara "click"
+      const pointerAngle = (3 * Math.PI) / 2;
+      const normalizedRotation = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      const currentSliceIndex = Math.floor(normalizedRotation / sliceAngle);
+
+      if (currentSliceIndex !== lastSliceIndex && isSpinning) {
+        playTickSound();
+        lastSliceIndex = currentSliceIndex;
+      }
+    }
+
+    drawWheel();
+
+    function spinWheel() {
+      if (isSpinning) return;
+      if (currentSpinIndex >= fixedWinners.length) {
+        alert("Sesi pengundian 4 pemenang telah selesai!");
+        return;
+      }
+
+      initAudio(); // Aktifkan sistem audio setelah interaksi klik
+
+      isSpinning = true;
+      document.getElementById("spinBtn").disabled = true;
+
+      const winnerName = fixedWinners[currentSpinIndex];
+      const targetIndex = candidates.indexOf(winnerName);
+
+      const targetSectorAngle = targetIndex * sliceAngle + sliceAngle / 2;
+      const pointerAngle = (3 * Math.PI) / 2;
+      
+      let baseTargetRotation = pointerAngle - targetSectorAngle;
+      const extraRotations = (5 + Math.floor(Math.random() * 3)) * 2 * Math.PI;
+      
+      const currentMod = currentRotation % (2 * Math.PI);
+      const finalRotation = currentRotation + (2 * Math.PI - currentMod) + extraRotations + (baseTargetRotation % (2 * Math.PI));
+
+      const startTime = performance.now();
+      const spinDuration = 5000;
+
+      function animateSpin(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / spinDuration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        
+        currentRotation = currentRotation + (finalRotation - currentRotation) * (easeOut - progress / (1 / (1 - Math.pow(1 - (progress - 0.01), 3))));
+        
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animateSpin);
+        } else {
+          currentRotation = finalRotation;
+          drawWheel();
+          showWinner(winnerName);
+          currentSpinIndex++;
+          isSpinning = false;
+          document.getElementById("spinBtn").disabled = false;
+        }
+      }
+
+      requestAnimationFrame(animateSpin);
+    }
+
+    function showWinner(name) {
+      document.getElementById("winnerName").innerText = name;
+      document.getElementById("winnerModal").style.display = "flex";
+      playVictorySound();
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+    }
+
+    function closeModal() {
+      document.getElementById("winnerModal").style.display = "none";
+    }
+  </script>
+</body>
+</html>
