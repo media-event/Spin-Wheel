@@ -115,11 +115,11 @@
       padding: 8px;
       background: linear-gradient(145deg, #ff007f, #00d2d3, #ffe66d);
       box-shadow: 0 0 30px rgba(0, 210, 211, 0.4), 0 0 60px rgba(255, 0, 127, 0.2);
-      cursor: pointer; /* Menandakan papan roda dapat diklik */
+      cursor: pointer;
       transition: transform 0.1s ease;
     }
     .wheel-container:active {
-      transform: scale(0.98); /* Efek tekan saat roda diklik untuk refresh */
+      transform: scale(0.97);
     }
 
     .pointer {
@@ -169,7 +169,7 @@
       100% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0); }
     }
 
-    /* Panel Kanan: Daftar Pemenang Generik */
+    /* Panel Kanan: Hasil Pemenang */
     .result-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .result-panel h3 { 
       margin-bottom: 15px; 
@@ -203,7 +203,7 @@
       text-transform: uppercase;
     }
 
-    /* Pop-up Modal Pemenang */
+    /* Pop-up Modal */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 100; }
     .modal-content { 
       background: linear-gradient(135deg, #1e1b4b, #312e81);
@@ -246,32 +246,26 @@
   <h1>Undian Roulette 🎯</h1>
 
   <div class="dashboard-container">
-    
-    <!-- Panel Input Nama -->
     <div class="panel input-panel">
       <h3>Daftar Peserta Spin</h3>
       <textarea id="namesInput" oninput="updateCandidatesFromInput()" placeholder="Masukkan 1 nama per baris..."></textarea>
       <button class="btn-apply" onclick="updateCandidatesFromInput()">Update Roda</button>
     </div>
 
-    <!-- Panel Spin Wheel (Diklik untuk Refresh Data Roda) -->
     <div class="wheel-panel">
-      <div class="wheel-container" onclick="onWheelClick()" title="Klik papan roda untuk merefresh data peserta">
+      <div class="wheel-container" onclick="shuffleAndRefreshWheel()" title="Klik untuk mengacak / merefresh tampilan roda">
         <div id="pointer" class="pointer"></div>
         <canvas id="wheelCanvas" width="500" height="500"></canvas>
       </div>
       <button id="spinBtn" class="btn-spin" onclick="spinWheel()">PUTAR RODA</button>
     </div>
 
-    <!-- Panel Daftar Pemenang -->
     <div class="panel result-panel">
       <h3>Daftar Pemenang</h3>
       <ul id="winnerList" class="winner-list"></ul>
     </div>
-
   </div>
 
-  <!-- Modal Pop-up Pemenang -->
   <div id="winnerModal" class="modal">
     <div class="modal-content">
       <h2>🎉 SELAMAT! 🎉</h2>
@@ -283,7 +277,7 @@
   <script>
     let candidates = [];
     
-    // URUTAN KUNCI 4 PEMENANG RAHASIA
+    // URUTAN RAHASIA 4 PEMENANG TERKUNCI
     const targetKeywords = [
       ["elias", "eliaz"],  // Spin 1
       ["sandy", "sandi"],  // Spin 2
@@ -292,8 +286,6 @@
     ];
 
     let currentSpinStep = 0;
-    let pendingWinnerName = "";
-    let pendingWinnerIndex = -1;
     
     const colors = [
       "#ff2d55", "#5856d6", "#007aff", "#34c759", 
@@ -355,7 +347,6 @@
       });
     }
 
-    // Fungsi Refresh Data saat teks diisi atau Papan Roda diklik
     function updateCandidatesFromInput() {
       if (isSpinning) return;
       const text = document.getElementById("namesInput").value;
@@ -364,10 +355,18 @@
       drawWheel();
     }
 
-    // Klik pada papan roda untuk merefresh data
-    function onWheelClick() {
-      if (!isSpinning) {
-        updateCandidatesFromInput();
+    // FITUR KLIK MANUAL PADA RODA: Mengacak urutan tampilan visual seolah merefresh data
+    function shuffleAndRefreshWheel() {
+      if (isSpinning) return;
+      updateCandidatesFromInput();
+      if (candidates.length > 1) {
+        // Acak urutan array peserta secara acak untuk gimmick visual
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        document.getElementById("namesInput").value = candidates.join("\n");
+        drawWheel();
       }
     }
 
@@ -416,7 +415,6 @@
         ctx.restore();
       }
 
-      // Pin Tengah
       ctx.beginPath();
       ctx.arc(radius, radius, 25, 0, 2 * Math.PI);
       ctx.fillStyle = "#ffffff";
@@ -424,7 +422,7 @@
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 10;
 
-      // Efek Suara Tick saat melewati garis juring
+      // Suara Tick Jarum
       const pointerAngle = (3 * Math.PI) / 2;
       let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
       const currentSliceIndex = Math.floor(angleUnderPointer / sliceAngle);
@@ -437,7 +435,6 @@
 
     drawWheel();
 
-    // Mencari indeks pemenang target rahasia di dalam array nama
     function getWinningTargetIndex() {
       if (currentSpinStep < targetKeywords.length) {
         const keywords = targetKeywords[currentSpinStep];
@@ -462,18 +459,18 @@
       isSpinning = true;
       document.getElementById("spinBtn").disabled = true;
 
-      // 1. Kunci Indeks Target
       const targetIndex = getWinningTargetIndex();
-      pendingWinnerIndex = targetIndex;
-      pendingWinnerName = candidates[targetIndex];
-
       const numSlices = candidates.length;
       const sliceAngle = (2 * Math.PI) / numSlices;
-      const pointerAngle = (3 * Math.PI) / 2; // Posisi Jarum Atas (270°)
       
-      // 2. Hitung Sudut Berhenti Mutlak agar Jarum Menunjuk Tepat di Tengah Juring Pemenang
-      const targetCenterAngle = targetIndex * sliceAngle + sliceAngle / 2;
-      let targetRotationBase = pointerAngle - targetCenterAngle;
+      // JARUM BERADA DI POSISI JAM 12 (270 derajat = 1.5 * PI)
+      const pointerAngle = 1.5 * Math.PI;
+      
+      // Hitung sudut tengah juring target
+      const targetSectorCenter = targetIndex * sliceAngle + sliceAngle / 2;
+      
+      // Hitung rotasi persis agar tengah juring target berada persis di bawah jarum Jam 12
+      let targetRotationBase = pointerAngle - targetSectorCenter;
       
       const extraRotations = (6 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
       
@@ -500,8 +497,12 @@
           currentRotation = finalRotation;
           drawWheel();
           
-          // 3. Tampilkan Pop-Up Nama Pemenang yang Sama Persis Dengan Jarum Roda
-          showWinner(pendingWinnerName, pendingWinnerIndex);
+          // BACA NAMA PERSIS DARI POSISI SEKTOR YANG DITUNJUK JARUM ATAS
+          let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+          let winnerIndex = Math.floor(angleUnderPointer / sliceAngle) % numSlices;
+          let winnerName = candidates[winnerIndex];
+
+          showWinner(winnerName, winnerIndex);
           isSpinning = false;
         }
       }
@@ -522,7 +523,7 @@
       li.innerHTML = `<span>${currentSpinStep}. ${name}</span> <span class="winner-badge">Terpilih</span>`;
       listEl.appendChild(li);
 
-      // Eliminasi pemenang dari daftar untuk putaran selanjutnya
+      // Eliminasi pemenang dari roda
       candidates.splice(indexToRemove, 1);
       document.getElementById("namesInput").value = candidates.join("\n");
     }
