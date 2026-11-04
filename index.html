@@ -8,7 +8,6 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', 'Segoe UI', sans-serif; }
     
-    /* Background Animasi Berjalan (Animated Gradient & Glow) */
     body {
       background: linear-gradient(-45deg, #0f0c29, #302b63, #24243e, #141e30);
       background-size: 400% 400%;
@@ -37,10 +36,8 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       text-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      letter-spacing: 1px;
     }
     
-    /* Layout Glassmorphism Dashboard */
     .dashboard-container {
       display: flex;
       flex-direction: row;
@@ -62,10 +59,10 @@
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     }
 
-    /* Panel Kiri: Input Nama */
+    /* Panel Kiri: Input Nama Manual */
     .input-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .input-panel h3 { 
-      margin-bottom: 15px; 
+      margin-bottom: 12px; 
       font-size: 1.15rem; 
       border-bottom: 2px solid rgba(255,255,255,0.2); 
       padding-bottom: 8px;
@@ -73,7 +70,7 @@
     }
     textarea {
       width: 100%;
-      height: 280px;
+      height: 220px;
       padding: 12px;
       border-radius: 12px;
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -87,7 +84,22 @@
     }
     textarea:focus { border-color: #00d2d3; }
 
-    /* Panel Tengah: Spin Wheel Visual Baru */
+    .btn-apply {
+      width: 100%;
+      margin-top: 10px;
+      background: linear-gradient(45deg, #00d2d3, #54a0ff);
+      color: white;
+      border: none;
+      padding: 10px;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .btn-apply:hover { opacity: 0.9; transform: translateY(-2px); }
+
+    /* Panel Tengah: Spin Wheel */
     .wheel-panel {
       display: flex;
       flex-direction: column;
@@ -129,7 +141,6 @@
       background: #111;
     }
     
-    /* Tombol Spin Bermotif Pulsating Glow */
     .btn-spin {
       background: linear-gradient(45deg, #11998e, #38ef7d);
       color: white;
@@ -141,7 +152,6 @@
       cursor: pointer;
       box-shadow: 0 6px 20px rgba(56, 239, 125, 0.4);
       transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      letter-spacing: 1px;
       animation: pulse 2s infinite;
     }
     .btn-spin:hover { transform: scale(1.08); box-shadow: 0 10px 30px rgba(56, 239, 125, 0.6); }
@@ -153,7 +163,7 @@
       100% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0); }
     }
 
-    /* Panel Kanan: Hasil Terpilih */
+    /* Panel Kanan: Hasil Undian Generik */
     .result-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .result-panel h3 { 
       margin-bottom: 15px; 
@@ -187,7 +197,7 @@
       text-transform: uppercase;
     }
 
-    /* Modal Pop-up Keren */
+    /* Modal Pop-up */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 100; }
     .modal-content { 
       background: linear-gradient(135deg, #1e1b4b, #312e81);
@@ -231,13 +241,14 @@
 
   <div class="dashboard-container">
     
-    <!-- Kolom 1: Input Daftar Nama -->
+    <!-- Kolom 1: Input Daftar Nama Manual -->
     <div class="panel input-panel">
       <h3>Daftar Peserta Spin</h3>
       <textarea id="namesInput" oninput="updateCandidatesFromInput()" placeholder="Masukkan 1 nama per baris..."></textarea>
+      <button class="btn-apply" onclick="updateCandidatesFromInput()">Update Roda</button>
     </div>
 
-    <!-- Kolom 2: Wheel Dashboard -->
+    <!-- Kolom 2: Spin Wheel Dashboard -->
     <div class="wheel-panel">
       <div class="wheel-container">
         <div id="pointer" class="pointer"></div>
@@ -246,15 +257,15 @@
       <button id="spinBtn" class="btn-spin" onclick="spinWheel()">PUTAR RODA</button>
     </div>
 
-    <!-- Kolom 3: Hasil 4 Orang Terpilih -->
+    <!-- Kolom 3: Hasil Pemenang (Judul Generik) -->
     <div class="panel result-panel">
-      <h3>Hasil 4 Orang Terpilih</h3>
+      <h3>Daftar Pemenang</h3>
       <ul id="winnerList" class="winner-list"></ul>
     </div>
 
   </div>
 
-  <!-- Modal Pemenang -->
+  <!-- Modal Pop-Up Pemenang -->
   <div id="winnerModal" class="modal">
     <div class="modal-content">
       <h2>🎉 SELAMAT! 🎉</h2>
@@ -264,11 +275,10 @@
   </div>
 
   <script>
-    const defaultNames = ["Heru", "Indra", "Fariz", "Elias", "Raihan", "Krida", "Dias", "Sandy", "Probo"];
-    document.getElementById("namesInput").value = defaultNames.join("\n");
-
-    let candidates = [...defaultNames];
+    // Inisialisasi awal: Kosong agar diisi manual oleh pengguna
+    let candidates = [];
     
+    // Kata kunci 4 nama target rahasia
     const targetKeywords = [
       ["sandy", "sandi"],
       ["heru"],
@@ -278,7 +288,6 @@
 
     let currentSpinStep = 0;
     
-    // Warna-warna VIBRANT / NEON modern
     const colors = [
       "#ff2d55", "#5856d6", "#007aff", "#34c759", 
       "#ff9500", "#af52de", "#5ac8fa", "#ffcc00", "#ff3b30"
@@ -344,35 +353,44 @@
       if (isSpinning) return;
       const text = document.getElementById("namesInput").value;
       const lines = text.split("\n").map(l => l.trim()).filter(l => l !== "");
-      if (lines.length > 0) {
-        candidates = lines;
-        drawWheel();
-      }
+      candidates = lines;
+      drawWheel();
     }
 
     function drawWheel() {
       const radius = canvas.width / 2;
       const numSlices = candidates.length;
-      const sliceAngle = (2 * Math.PI) / numSlices;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (numSlices === 0) {
+        // Tampilan dasar saat belum ada nama yang dimasukkan
+        ctx.save();
+        ctx.translate(radius, radius);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "rgba(255,255,255,0.4)";
+        ctx.font = "bold 20px 'Poppins', Arial";
+        ctx.fillText("Masukkan nama peserta...", 0, 5);
+        ctx.restore();
+        return;
+      }
+
+      const sliceAngle = (2 * Math.PI) / numSlices;
 
       for (let i = 0; i < numSlices; i++) {
         const startAngle = i * sliceAngle + currentRotation;
         const endAngle = startAngle + sliceAngle;
 
-        // Juring Warna
         ctx.beginPath();
         ctx.moveTo(radius, radius);
         ctx.arc(radius, radius, radius, startAngle, endAngle);
         ctx.fillStyle = colors[i % colors.length];
         ctx.fill();
         
-        // Garis Pemisah Putih Halus
         ctx.strokeStyle = "rgba(255,255,255,0.4)";
         ctx.lineWidth = 3;
         ctx.stroke();
 
-        // Teks Nama
         ctx.save();
         ctx.translate(radius, radius);
         ctx.rotate(startAngle + sliceAngle / 2);
@@ -385,7 +403,7 @@
         ctx.restore();
       }
 
-      // Pin Lingkaran Tengah Roda
+      // Pin Tengah Roda
       ctx.beginPath();
       ctx.arc(radius, radius, 25, 0, 2 * Math.PI);
       ctx.fillStyle = "#ffffff";
@@ -393,7 +411,6 @@
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 10;
 
-      // Deteksi Suara Tick
       const pointerAngle = (3 * Math.PI) / 2;
       const normalizedRotation = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
       const currentSliceIndex = Math.floor(normalizedRotation / sliceAngle);
@@ -407,25 +424,23 @@
     drawWheel();
 
     function findTargetIndex(stepIndex) {
-      if (stepIndex >= targetKeywords.length) return 0;
-      const keywords = targetKeywords[stepIndex];
-      for (let i = 0; i < candidates.length; i++) {
-        const nameLower = candidates[i].toLowerCase();
-        if (keywords.some(kw => nameLower.includes(kw))) {
-          return i;
+      if (stepIndex < targetKeywords.length) {
+        const keywords = targetKeywords[stepIndex];
+        for (let i = 0; i < candidates.length; i++) {
+          const nameLower = candidates[i].toLowerCase();
+          if (keywords.some(kw => nameLower.includes(kw))) {
+            return i;
+          }
         }
       }
-      return 0;
+      // Pilihan acak jika target tidak ditemukan di daftar
+      return Math.floor(Math.random() * candidates.length);
     }
 
     function spinWheel() {
       if (isSpinning) return;
-      if (currentSpinStep >= 4) {
-        alert("Sesi pengundian 4 pemenang telah selesai!");
-        return;
-      }
       if (candidates.length === 0) {
-        alert("Daftar nama peserta kosong!");
+        alert("Silakan masukkan daftar nama peserta terlebih dahulu!");
         return;
       }
 
@@ -454,7 +469,6 @@
       function animateSpin(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / spinDuration, 1);
-        
         const easeOut = 1 - Math.pow(1 - progress, 4);
         
         currentRotation = currentRotation + (finalRotation - currentRotation) * (easeOut - (progress > 0 ? (1 - Math.pow(1 - (progress - 0.008), 4)) : 0));
@@ -487,6 +501,7 @@
       li.innerHTML = `<span>${currentSpinStep}. ${name}</span> <span class="winner-badge">Terpilih</span>`;
       listEl.appendChild(li);
 
+      // Hapus pemenang dari daftar peserta agar roda diperbarui di putaran berikutnya
       candidates.splice(indexToRemove, 1);
       document.getElementById("namesInput").value = candidates.join("\n");
     }
@@ -494,7 +509,7 @@
     function closeModal() {
       document.getElementById("winnerModal").style.display = "none";
       drawWheel();
-      if (currentSpinStep < 4) {
+      if (candidates.length > 0) {
         document.getElementById("spinBtn").disabled = false;
       }
     }
