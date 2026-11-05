@@ -273,7 +273,7 @@
   <script>
     let candidates = [];
     
-    // URUTAN KUNCI 3 PEMENANG (SEMUA DITULIS HURUF KECIL)
+    // URUTAN KUNCI PEMENANG TERKUNCI (Elias -> Faris -> Indra)
     const targetKeywords = [
       ["elias", "eliaz"],  // Spin 1
       ["faris", "fariz"],  // Spin 2
@@ -415,7 +415,7 @@
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 10;
 
-      // Suara Tick Jarum (Mencatat posisi juring di bawah Jam 12)
+      // Suara Tick Jarum (Jam 12)
       const pointerAngle = 1.5 * Math.PI;
       let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
       const currentSliceIndex = Math.floor(angleUnderPointer / sliceAngle) % numSlices;
@@ -461,7 +461,8 @@
       // RUMUS ROTASI PRESISI SEARAH JARUM JAM
       let desiredAngle = pointerAngle + (numSlices - targetIndex - 0.5) * sliceAngle;
       
-      const extraRotations = (6 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
+      // PUTARAN DIBUAT LEBIH BANYAK (10-12 Putaran) UNTUK EFEK DRAMATIS
+      const extraRotations = (10 + Math.floor(Math.random() * 3)) * 2 * Math.PI;
       
       let delta = (desiredAngle - currentRotation) % (2 * Math.PI);
       if (delta < 0) delta += 2 * Math.PI;
@@ -470,12 +471,14 @@
       const finalRotation = currentRotation + delta + extraRotations;
 
       const startTime = performance.now();
-      const spinDuration = 7000;
+      const spinDuration = 11000; // DURASI DIPERPANJANG MENJADI 11 DETIK (Dramatis & Smooth)
 
       function animateSpin(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / spinDuration, 1);
-        const easeOut = 1 - Math.pow(1 - progress, 4);
+        
+        // Easing Quintic-Out: Awal kencang, lalu melambat sangat mulus dan santai di akhir
+        const easeOut = 1 - Math.pow(1 - progress, 5);
         
         currentRotation = startRotation + (finalRotation - startRotation) * easeOut;
         
@@ -487,7 +490,6 @@
           currentRotation = finalRotation;
           drawWheel();
           
-          // AMBIL PRESISI SAMA SESUAI NAMA DI BAWAH JARUM JAM 12
           let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
           let winnerIndex = Math.floor(angleUnderPointer / sliceAngle) % numSlices;
           let winnerName = candidates[winnerIndex];
@@ -513,7 +515,7 @@
       li.innerHTML = `<span>${currentSpinStep}. ${name}</span> <span class="winner-badge">Terpilih</span>`;
       listEl.appendChild(li);
 
-      // Eliminasi pemenang dari daftar
+      // Eliminasi pemenang dari daftar peserta
       candidates.splice(indexToRemove, 1);
       document.getElementById("namesInput").value = candidates.join("\n");
     }
