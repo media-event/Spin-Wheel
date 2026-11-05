@@ -59,7 +59,6 @@
       box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     }
 
-    /* Panel Kiri: Input Nama */
     .input-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .input-panel h3 { 
       margin-bottom: 12px; 
@@ -99,7 +98,6 @@
     }
     .btn-apply:hover { opacity: 0.9; transform: translateY(-2px); }
 
-    /* Panel Tengah: Papan Spin Wheel */
     .wheel-panel {
       display: flex;
       flex-direction: column;
@@ -169,7 +167,6 @@
       100% { box-shadow: 0 0 0 0 rgba(56, 239, 125, 0); }
     }
 
-    /* Panel Kanan: Daftar Pemenang */
     .result-panel { flex: 1; min-width: 270px; max-width: 320px; }
     .result-panel h3 { 
       margin-bottom: 15px; 
@@ -203,7 +200,6 @@
       text-transform: uppercase;
     }
 
-    /* Pop-up Modal */
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); justify-content: center; align-items: center; z-index: 100; }
     .modal-content { 
       background: linear-gradient(135deg, #1e1b4b, #312e81);
@@ -277,11 +273,11 @@
   <script>
     let candidates = [];
     
-    // URUTAN RAHASIA 4 PEMENANG TERKUNCI (Elias -> Faris -> Indra)
+    // URUTAN KUNCI 3 PEMENANG (SEMUA DITULIS HURUF KECIL)
     const targetKeywords = [
-      ["Elias", "Eliaz"],  // Spin 1
-      ["Faris", "Fariz"],  // Spin 2
-      ["Indra"],            // Spin 3
+      ["elias", "eliaz"],  // Spin 1
+      ["faris", "fariz"],  // Spin 2
+      ["indra"]            // Spin 3
     ];
 
     let currentSpinStep = 0;
@@ -419,10 +415,10 @@
       ctx.shadowColor = "rgba(0,0,0,0.5)";
       ctx.shadowBlur = 10;
 
-      // Suara Tick Jarum
-      const pointerAngle = 1.5 * Math.PI; // Jam 12
+      // Suara Tick Jarum (Mencatat posisi juring di bawah Jam 12)
+      const pointerAngle = 1.5 * Math.PI;
       let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-      const currentSliceIndex = Math.floor(angleUnderPointer / sliceAngle);
+      const currentSliceIndex = Math.floor(angleUnderPointer / sliceAngle) % numSlices;
 
       if (currentSliceIndex !== lastSliceIndex && isSpinning) {
         playTickSound();
@@ -437,7 +433,7 @@
         const keywords = targetKeywords[currentSpinStep];
         for (let i = 0; i < candidates.length; i++) {
           const nameLower = candidates[i].toLowerCase();
-          if (keywords.some(kw => nameLower.includes(kw))) {
+          if (keywords.some(kw => nameLower.includes(kw.toLowerCase()))) {
             return i;
           }
         }
@@ -460,18 +456,14 @@
       const numSlices = candidates.length;
       const sliceAngle = (2 * Math.PI) / numSlices;
       
-      // JARUM MERAH ATAS BERADA DI POSISI JAM 12 (1.5 * PI Radian)
-      const pointerAngle = 1.5 * Math.PI;
+      const pointerAngle = 1.5 * Math.PI; // Jam 12
       
-      // Hitung sudut tengah sektor targetIndex saat ini
-      const targetSectorCenter = targetIndex * sliceAngle + sliceAngle / 2;
-      
-      // Target Rotasi Dasar agar sektor targetIndex tepat berada di bawah Jarum Jam 12
-      let targetRotationBase = pointerAngle - targetSectorCenter;
+      // RUMUS ROTASI PRESISI SEARAH JARUM JAM
+      let desiredAngle = pointerAngle + (numSlices - targetIndex - 0.5) * sliceAngle;
       
       const extraRotations = (6 + Math.floor(Math.random() * 2)) * 2 * Math.PI;
       
-      let delta = (targetRotationBase - currentRotation) % (2 * Math.PI);
+      let delta = (desiredAngle - currentRotation) % (2 * Math.PI);
       if (delta < 0) delta += 2 * Math.PI;
 
       const startRotation = currentRotation;
@@ -495,7 +487,7 @@
           currentRotation = finalRotation;
           drawWheel();
           
-          // DETEKSI AKURAT HARUS DIBACA LANGSUNG DARI POSISI SEKTOR JARUM ATAS
+          // AMBIL PRESISI SAMA SESUAI NAMA DI BAWAH JARUM JAM 12
           let angleUnderPointer = (pointerAngle - (currentRotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
           let winnerIndex = Math.floor(angleUnderPointer / sliceAngle) % numSlices;
           let winnerName = candidates[winnerIndex];
