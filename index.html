@@ -273,11 +273,11 @@
   <script>
     let candidates = [];
     
-    // URUTAN KUNCI PEMENANG TERKUNCI (Elias -> Faris -> Indra)
+    // URUTAN BARU 3 PEMENANG TERKUNCI (Elias -> Indra -> Faris)
     const targetKeywords = [
       ["elias", "eliaz"],  // Spin 1
-      ["faris", "fariz"],  // Spin 2
-      ["indra"]            // Spin 3
+      ["indra"],           // Spin 2
+      ["faris", "fariz"]   // Spin 3
     ];
 
     let currentSpinStep = 0;
@@ -461,7 +461,7 @@
       // RUMUS ROTASI PRESISI SEARAH JARUM JAM
       let desiredAngle = pointerAngle + (numSlices - targetIndex - 0.5) * sliceAngle;
       
-      // PUTARAN DIBUAT LEBIH BANYAK (10-12 Putaran) UNTUK EFEK DRAMATIS
+      // PUTARAN DRAMATIS (10-12 Putaran)
       const extraRotations = (10 + Math.floor(Math.random() * 3)) * 2 * Math.PI;
       
       let delta = (desiredAngle - currentRotation) % (2 * Math.PI);
@@ -471,13 +471,13 @@
       const finalRotation = currentRotation + delta + extraRotations;
 
       const startTime = performance.now();
-      const spinDuration = 11000; // DURASI DIPERPANJANG MENJADI 11 DETIK (Dramatis & Smooth)
+      const spinDuration = 11000; // 11 Detik (Halus & Dramatis)
 
       function animateSpin(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / spinDuration, 1);
         
-        // Easing Quintic-Out: Awal kencang, lalu melambat sangat mulus dan santai di akhir
+        // Easing Quintic-Out
         const easeOut = 1 - Math.pow(1 - progress, 5);
         
         currentRotation = startRotation + (finalRotation - startRotation) * easeOut;
